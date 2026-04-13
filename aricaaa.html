@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geografia d'Àfrica - Estudi i Joc</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a1a;
+            color: #333;
+            overflow: hidden;
+        }
+
+        /* Notificacions modernes (substitueixen els alerts) */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { background-color: #2ecc71; }
+        .toast.error { background-color: #e74c3c; }
+        .toast.info { background-color: #9b59b6; }
+
+        /* Contenidor principal UI */
+        #ui-container {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: white;
+            padding: 25px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 85%;
+            max-width: 500px;
+            border: 1px solid #eaeaea;
+        }
+
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 24px;
+            color: #111;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mode-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-estudi {
+            background-color: #f1f3f5;
+            color: #495057;
+        }
+        .btn-estudi.active { 
+            background-color: #3b82f6; 
+            color: white; 
+            border-color: #2563eb;
+        }
+
+        .btn-joc {
+            background-color: #f1f3f5;
+            color: #495057;
+        }
+        .btn-joc.active { 
+            background-color: #10b981; 
+            color: white; 
+            border-color: #059669;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        #score-display { color: #10b981; }
+        #attempts-display { color: #f59e0b; }
+
+        .question-text {
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .target-name {
+            font-size: 28px;
+            color: #111;
+            font-weight: 800;
+        }
+
+        #study-message {
+            font-size: 15px;
+            color: #4b5563;
+            padding: 15px;
+            background: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        #map {
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* Pantalla Final */
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            text-align: center;
+            width: 90%;
+            max-width: 450px;
+        }
+        #game-over h2 { 
+            font-size: 32px; 
+            margin-top: 0; 
+            color: #111;
+        }
+        .final-score-text {
+            font-size: 48px;
+            font-weight: 800;
+            color: #3b82f6;
+            margin: 20px 0;
+        }
+        .btn-restart {
+            background-color: #111;
+            color: white;
+            padding: 16px 32px;
+            font-size: 16px;
+            border-radius: 8px;
+            margin-top: 10px;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-restart:hover { background-color: #333; }
+
+        .leaflet-tooltip {
+            background: #111;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            padding: 8px 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .leaflet-tooltip-top:before { border-top-color: #111; }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+
+    <div id="ui-container">
+        <h1>Geografia d'Àfrica</h1>
+        
+        <div class="mode-buttons">
+            <button id="btnEstudi" class="btn btn-estudi" onclick="activarMode('estudi')">Mode Estudi</button>
+            <button id="btnJoc" class="btn btn-joc" onclick="activarMode('joc')">Mode Joc</button>
+        </div>
+
+        <div id="estudi-ui">
+            <div id="study-message">Passa el cursor sobre els punts per veure els noms i memoritzar-los.</div>
+        </div>
+
+        <div id="joc-ui" style="display: none;">
+            <div class="stats">
+                <span id="score-display">Punts: 0</span>
+                <span id="attempts-display">Intents: 4</span>
+            </div>
+            <div class="question-text">Troba aquesta ubicació:</div>
+            <div class="target-name" id="target-display">Carregant...</div>
+        </div>
+    </div>
+
+    <div id="game-over">
+        <h2 id="final-message">Joc Finalitzat</h2>
+        <p style="font-size: 16px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Nota Final</p>
+        <div class="final-score-text" id="final-score"></div>
+        <button class="btn btn-restart" onclick="activarMode('joc')">Tornar a Jugar</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        const ubicacions = [
+            { nom: "Atles", lat: 31.0, lng: -7.0 },
+            { nom: "Serralada Drakensberg", lat: -29.0, lng: 29.0 },
+            { nom: "Vall del Rift", lat: -0.5, lng: 36.0 },
+            { nom: "Massís Etiòpic", lat: 10.0, lng: 38.0 },
+            { nom: "Massís d'Ahaggar", lat: 23.0, lng: 5.5 },
+            { nom: "Massís de Tibesti", lat: 21.0, lng: 17.5 },
+            { nom: "Massís de Darfur", lat: 13.0, lng: 24.0 },
+            { nom: "Conca del Níger", lat: 12.0, lng: 4.0 },
+            { nom: "Conca del Txad", lat: 14.0, lng: 16.0 },
+            { nom: "Conca del Nil", lat: 10.0, lng: 30.0 },
+            { nom: "Conca del Congo", lat: 0.0, lng: 22.0 },
+            { nom: "Conca del Zambezi", lat: -15.0, lng: 25.0 },
+            { nom: "Desert del Sàhara", lat: 23.0, lng: 10.0 },
+            { nom: "Desert de Kalahari", lat: -23.0, lng: 22.0 },
+            { nom: "Desert del Namib", lat: -23.0, lng: 15.0 },
+            { nom: "Kilimanjaro", lat: -3.06, lng: 37.35 },
+            { nom: "Kenya", lat: -0.15, lng: 37.30 },
+            { nom: "Madagascar", lat: -19.0, lng: 47.0 },
+            { nom: "Cap Verd (Illes)", lat: 16.0, lng: -24.0 },
+            { nom: "Seychelles", lat: -4.6, lng: 55.4 },
+            { nom: "Maurici", lat: -20.3, lng: 57.5 },
+            { nom: "Madeira", lat: 32.7, lng: -16.9 },
+            { nom: "Açores", lat: 37.7, lng: -25.6 },
+            { nom: "Canàries", lat: 28.2, lng: -16.3 },
+            { nom: "Golf de Guinea", lat: 2.0, lng: 3.0 },
+            { nom: "Golf de Benguela", lat: -12.5, lng: 13.0 },
+            { nom: "Golf d'Aden", lat: 12.0, lng: 48.0 },
+            { nom: "Península de Somàlia", lat: 9.0, lng: 48.0 },
+            { nom: "Cap de Bona Esperança", lat: -34.35, lng: 18.47 },
+            { nom: "Cap Verd (Península)", lat: 14.73, lng: -17.50 },
+            { nom: "Riu Nil", lat: 20.0, lng: 31.0 },
+            { nom: "Riu Congo", lat: -1.0, lng: 19.0 },
+            { nom: "Riu Níger", lat: 13.0, lng: 2.0 },
+            { nom: "Riu Zambezi", lat: -16.0, lng: 29.0 },
+            { nom: "Riu Orange", lat: -29.0, lng: 20.0 },
+            { nom: "Riu Limpopo", lat: -22.0, lng: 30.0 },
+            { nom: "Riu Volta", lat: 8.0, lng: -1.0 },
+            { nom: "Llac Victòria", lat: -1.0, lng: 33.0 },
+            { nom: "Llac Tanganyika", lat: -6.0, lng: 29.5 },
+            { nom: "Llac Malawi/Nyasa", lat: -12.0, lng: 34.5 },
+            { nom: "Llac Txad", lat: 13.0, lng: 14.0 }
+        ];
+
+        const map = L.map('map', {
+            center: [2.0, 20.0], 
+            zoom: 4, 
+            zoomControl: false 
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap & CartoDB'
+        }).addTo(map);
+
+        let currentMode = 'estudi';
+        let queue = [];
+        let currentIndex = 0;
+        let punts = 0;
+        let intents = 4;
+        let currentTarget = null;
+        let markersList = [];
+
+        function showNotification(message, type) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        ubicacions.forEach((lloc) => {
+            const marker = L.circleMarker([lloc.lat, lloc.lng], {
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.9,
+                radius: 8,
+                weight: 3
+            }).addTo(map);
+
+            marker.lloc = lloc;
+            marker.answered = false; // Propietat nova per bloquejar el clic
+            marker.on('click', () => onMarkerClick(marker));
+            markersList.push(marker);
+        });
+
+        function activarMode(mode) {
+            currentMode = mode;
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('ui-container').style.display = 'block';
+
+            document.getElementById('btnEstudi').classList.toggle('active', mode === 'estudi');
+            document.getElementById('btnJoc').classList.toggle('active', mode === 'joc');
+
+            document.getElementById('estudi-ui').style.display = mode === 'estudi' ? 'block' : 'none';
+            document.getElementById('joc-ui').style.display = mode === 'joc' ? 'block' : 'none';
+
+            // Reiniciar estat dels marcadors
+            markersList.forEach(marker => {
+                marker.answered = false;
+                marker.setStyle({ color: '#3b82f6', fillColor: '#3b82f6', radius: 8, fillOpacity: 0.9 });
+                if (mode === 'estudi') {
+                    marker.bindTooltip(marker.lloc.nom, { direction: 'top', offset: [0, -10] });
+                } else {
+                    marker.unbindTooltip();
+                }
+            });
+
+            if (mode === 'joc') iniciarJoc();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function iniciarJoc() {
+            queue = [...ubicacions];
+            shuffleArray(queue);
+            punts = 0;
+            currentIndex = 0;
+            siguientePregunta();
+        }
+
+        function siguientePregunta() {
+            if (currentIndex >= queue.length) {
+                acabarJoc();
+                return;
+            }
+            intents = 4;
+            currentTarget = queue[currentIndex];
+            actualitzarUI();
+        }
+
+        function actualitzarUI() {
+            document.getElementById('target-display').innerText = currentTarget.nom;
+            document.getElementById('attempts-display').innerText = "Intents: " + intents;
+            document.getElementById('score-display').innerText = `Punts: ${punts} / ${ubicacions.length}`;
+            document.getElementById('attempts-display').style.color = intents > 1 ? "#f59e0b" : "#ef4444";
+        }
+
+        function onMarkerClick(marker) {
+            if (currentMode === 'estudi') return;
+            // Si el marcador ja ha estat respost correctament o fallat, l'ignorem
+            if (marker.answered || intents <= 0 || currentIndex >= queue.length) return;
+
+            if (marker.lloc.nom === currentTarget.nom) {
+                punts++;
+                marker.answered = true;
+                marker.setStyle({ color: '#10b981', fillColor: '#10b981', radius: 10, fillOpacity: 1 }); 
+                showNotification('Correcte!', 'success');
+                
+                setTimeout(() => {
+                    currentIndex++;
+                    siguientePregunta();
+                }, 800);
+
+            } else {
+                intents--;
+                actualitzarUI();
+                
+                let originalColor = marker.options.color;
+                marker.setStyle({ color: '#ef4444', fillColor: '#ef4444', radius: 12 });
+                
+                setTimeout(() => {
+                    // Retornem el color blau només si no ha esgotat els intents mentrestant
+                    if (!marker.answered) {
+                        marker.setStyle({ color: originalColor, fillColor: originalColor, radius: 8 });
+                    }
+                }, 400);
+
+                if (intents === 0) {
+                    let correctMarker = markersList.find(m => m.lloc.nom === currentTarget.nom);
+                    correctMarker.answered = true; // Bloquegem el marcador correcte perquè no es pugui clicar en el futur
+                    correctMarker.setStyle({ color: '#8b5cf6', fillColor: '#8b5cf6', radius: 10, fillOpacity: 1 }); 
+                    
+                    showNotification(`Temps esgotat. Era el punt de color lila.`, 'info');
+                    
+                    setTimeout(() => {
+                        currentIndex++;
+                        siguientePregunta();
+                    }, 2000);
+                }
+            }
+        }
+
+        function acabarJoc() {
+            document.getElementById('ui-container').style.display = 'none';
+            document.getElementById('game-over').style.display = 'block';
+            
+            let nota = ((punts / ubicacions.length) * 10).toFixed(1);
+            document.getElementById('final-score').innerText = `${nota} / 10`;
+            
+            let missatge = document.getElementById('final-message');
+            if (nota >= 9) {
+                missatge.innerText = "Resultat Excel·lent";
+            } else if (nota >= 5) {
+                missatge.innerText = "Has Aprovat";
+            } else {
+                missatge.innerText = "Has de millorar";
+            }
+        }
+
+        window.onload = () => activarMode('estudi');
+    </script>
+</body>
+</html>
